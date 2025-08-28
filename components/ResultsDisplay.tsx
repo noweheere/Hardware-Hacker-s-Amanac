@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { AnalysisResult } from '../types';
 import Spinner from './Spinner';
@@ -8,6 +7,7 @@ interface ResultsDisplayProps {
   result: AnalysisResult | null;
   isLoading: boolean;
   error: string | null;
+  onRetry: () => void;
 }
 
 const ResultCard: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
@@ -24,16 +24,22 @@ const ExternalLink: React.FC<{ href: string; text: string }> = ({ href, text }) 
   </a>
 );
 
-const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result, isLoading, error }) => {
+const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result, isLoading, error, onRetry }) => {
   if (isLoading) {
     return <Spinner message="Analyzing hardware..." />;
   }
 
   if (error) {
     return (
-      <div className="bg-red-900/50 border border-red-500 text-red-300 p-4 rounded-lg">
-        <p className="font-bold">Analysis Failed</p>
-        <p>{error}</p>
+      <div className="bg-red-900/50 border border-red-500 text-red-300 p-6 rounded-lg flex flex-col items-center justify-center text-center">
+        <p className="font-bold text-lg">Analysis Failed</p>
+        <p className="mt-1 mb-4 max-w-md">{error}</p>
+        <button
+            onClick={onRetry}
+            className="bg-cyan-500 text-white font-bold py-2 px-6 rounded-md hover:bg-cyan-600 transition-colors duration-200"
+        >
+            Retry
+        </button>
       </div>
     );
   }

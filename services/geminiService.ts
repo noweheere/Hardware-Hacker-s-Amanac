@@ -68,14 +68,12 @@ const getPrompt = (textInput?: string) => {
     return basePrompt;
 };
 
+// FIX: Refactored to use process.env.API_KEY as per the guidelines, removing the apiKey parameter.
 export const analyzeHardware = async (textInput?: string, imageBase64?: string, mimeType?: string): Promise<AnalysisResult> => {
-    if (!process.env.API_KEY) {
-        throw new Error("API_KEY environment variable not set");
-    }
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    // FIX: Initialize with API_KEY from environment variables as per guidelines.
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
 
     const prompt = getPrompt(textInput);
-    // FIX: Re-construct the parts array to correctly handle multimodal input (image and text) and resolve the TypeScript type inference error.
     const parts = [];
 
     if (imageBase64 && mimeType) {
@@ -103,8 +101,9 @@ export const analyzeHardware = async (textInput?: string, imageBase64?: string, 
         const result = JSON.parse(jsonString);
         return result as AnalysisResult;
 
+    // FIX: Corrected syntax for catch block from '=> {' to '{'.
     } catch (error) {
         console.error("Error calling Gemini API:", error);
-        throw new Error("Failed to get analysis from Gemini API. The component may not be identifiable or there could be a network issue.");
+        throw new Error("Failed to get analysis from Gemini API. Check if your API key is valid, the component is identifiable, or if there's a network issue.");
     }
 };

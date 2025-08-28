@@ -3,6 +3,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import { InputMode } from '../types';
 import { CameraIcon, TextIcon, UploadIcon } from './Icons';
 
+// FIX: Removed isConfigured prop as API key is now handled via environment variables.
 interface InputAreaProps {
   onAnalyze: (textInput?: string, imageBase64?: string, mimeType?: string) => void;
   isLoading: boolean;
@@ -102,6 +103,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onAnalyze, isLoading }) => {
     };
 
     const handleSubmit = () => {
+        // FIX: Removed !isConfigured check.
         if (isLoading) return;
         if (inputMode === InputMode.Text) {
             onAnalyze(textInput);
@@ -109,6 +111,9 @@ const InputArea: React.FC<InputAreaProps> = ({ onAnalyze, isLoading }) => {
             onAnalyze(undefined, imageData?.base64, imageData?.mimeType);
         }
     };
+
+    // FIX: Removed isConfigured from disabled logic.
+    const isSubmitDisabled = isLoading || (inputMode !== InputMode.Text && !imageData) || (inputMode === InputMode.Text && !textInput.trim());
 
     return (
         <div className="bg-gray-800/50 rounded-lg overflow-hidden border border-gray-700">
@@ -158,11 +163,12 @@ const InputArea: React.FC<InputAreaProps> = ({ onAnalyze, isLoading }) => {
                 <div className="mt-6 text-center">
                     <button
                         onClick={handleSubmit}
-                        disabled={isLoading || (inputMode !== InputMode.Text && !imageData) || (inputMode === InputMode.Text && !textInput.trim())}
+                        disabled={isSubmitDisabled}
                         className="w-full max-w-xs bg-green-500 text-gray-900 font-bold text-lg py-3 px-6 rounded-md hover:bg-green-400 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105"
                     >
                         {isLoading ? 'Analyzing...' : 'Analyze'}
                     </button>
+                    {/* FIX: Removed message about configuring API key. */}
                 </div>
             </div>
         </div>

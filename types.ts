@@ -5,6 +5,8 @@ export enum InputMode {
   Text = 'Text',
 }
 
+// FIX: Removed AiProvider enum as it's no longer needed after refactoring to use a single provider via environment variables.
+
 export interface HackingResource {
   title: string;
   url: string;
@@ -20,6 +22,7 @@ export interface ToolResource {
 export interface CommunityResource {
     name: string;
     url: string;
+    community: string;
 }
 
 export interface AnalysisResult {
