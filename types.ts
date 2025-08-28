@@ -34,3 +34,12 @@ export interface AnalysisResult {
   tools: ToolResource[];
   communities: CommunityResource[];
 }
+
+export interface ProjectData {
+    result: AnalysisResult;
+    notes: string;
+    sourceImage?: {
+        base64: string;
+        mimeType: string;
+    };
+}

@@ -1,12 +1,15 @@
 
 import React, { useState, useRef, useCallback } from 'react';
 import { InputMode } from '../types';
-import { CameraIcon, TextIcon, UploadIcon } from './Icons';
+import { CameraIcon, TextIcon, UploadIcon, FlipHorizontalIcon, FlashOnIcon, FlashOffIcon } from './Icons';
 
 // FIX: Removed isConfigured prop as API key is now handled via environment variables.
 interface InputAreaProps {
   onAnalyze: (textInput?: string, imageBase64?: string, mimeType?: string) => void;
   isLoading: boolean;
+  imagePreview: string | null;
+  setImagePreview: (preview: string | null) => void;
+  setImageData: (data: { base64: string; mimeType: string } | null) => void;
 }
 
 const ModeButton: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, onClick, children }) => (
@@ -22,28 +25,48 @@ const ModeButton: React.FC<{ active: boolean; onClick: () => void; children: Rea
     </button>
 );
 
-const InputArea: React.FC<InputAreaProps> = ({ onAnalyze, isLoading }) => {
+const InputArea: React.FC<InputAreaProps> = ({ onAnalyze, isLoading, imagePreview, setImagePreview, setImageData }) => {
     const [inputMode, setInputMode] = useState<InputMode>(InputMode.Upload);
     const [textInput, setTextInput] = useState('');
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
-    const [imageData, setImageData] = useState<{ base64: string; mimeType: string } | null>(null);
     const [cameraError, setCameraError] = useState<string | null>(null);
+
+    // Camera effect states
+    const [isMirrored, setIsMirrored] = useState(false);
+    const [isFlashOn, setIsFlashOn] = useState(false);
+    const [torchSupported, setTorchSupported] = useState(false);
+    const [activeFilter, setActiveFilter] = useState('none');
 
     const videoRef = useRef<HTMLVideoElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
 
+    const filters = [
+        { name: 'Ohne', value: 'none' },
+        { name: 'Monochrom', value: 'grayscale(100%)' },
+        { name: 'Sepia', value: 'sepia(100%)' },
+        { name: 'Hoher Kontrast', value: 'contrast(150%)' },
+        { name: 'Invertieren', value: 'invert(100%)' },
+    ];
+
     const stopCamera = useCallback(() => {
         if (streamRef.current) {
+            const videoTrack = streamRef.current.getVideoTracks()[0];
+            const capabilities = videoTrack.getCapabilities();
+            // FIX: Cast capabilities to 'any' to access the non-standard 'torch' property.
+            if ((capabilities as any).torch) {
+                // Unconditionally try to turn off torch, ignoring errors
+                // FIX: Cast constraints to 'any' to use the non-standard 'torch' property.
+                videoTrack.applyConstraints({ advanced: [{ torch: false }] } as any)
+                    .catch(e => console.error("Could not turn off flash on stop", e));
+            }
             streamRef.current.getTracks().forEach(track => track.stop());
             streamRef.current = null;
         }
+        setIsFlashOn(false); // Reset state
     }, []);
 
     const handleModeChange = (mode: InputMode) => {
         stopCamera();
         setCameraError(null);
-        setImagePreview(null);
-        setImageData(null);
         setInputMode(mode);
     };
 
@@ -62,16 +85,30 @@ const InputArea: React.FC<InputAreaProps> = ({ onAnalyze, isLoading }) => {
 
     const startCamera = async () => {
         stopCamera();
+        // Reset camera state for new session
+        setIsMirrored(false);
+        setTorchSupported(false);
+        setIsFlashOn(false);
+        setActiveFilter('none');
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
                 streamRef.current = stream;
             }
+            
+            // Check for torch (flash) support
+            const videoTrack = stream.getVideoTracks()[0];
+            const capabilities = videoTrack.getCapabilities();
+            // FIX: Cast capabilities to 'any' to access the non-standard 'torch' property.
+            if ((capabilities as any).torch) {
+                setTorchSupported(true);
+            }
+
             setCameraError(null);
         } catch (err) {
             console.error("Error accessing camera:", err);
-            setCameraError("Could not access camera. Please check permissions.");
+            setCameraError("Kamera konnte nicht aufgerufen werden. Bitte Berechtigungen prüfen.");
             stopCamera();
         }
     };
@@ -83,8 +120,24 @@ const InputArea: React.FC<InputAreaProps> = ({ onAnalyze, isLoading }) => {
       return () => {
           stopCamera();
       };
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [inputMode]);
+
+    const toggleFlash = async () => {
+        if (streamRef.current && torchSupported) {
+            const videoTrack = streamRef.current.getVideoTracks()[0];
+            try {
+                // FIX: Cast constraints to 'any' to use the non-standard 'torch' property.
+                await videoTrack.applyConstraints({
+                    advanced: [{ torch: !isFlashOn }]
+                } as any);
+                setIsFlashOn(!isFlashOn);
+            } catch (err) {
+                console.error('Error toggling flash:', err);
+                setCameraError("Blitz konnte nicht umgeschaltet werden.");
+            }
+        }
+    };
 
     const capturePhoto = () => {
         if (videoRef.current) {
@@ -93,7 +146,17 @@ const InputArea: React.FC<InputAreaProps> = ({ onAnalyze, isLoading }) => {
             canvas.height = videoRef.current.videoHeight;
             const ctx = canvas.getContext('2d');
             if(ctx){
+                // Apply mirror transformation to the canvas
+                if (isMirrored) {
+                    ctx.translate(canvas.width, 0);
+                    ctx.scale(-1, 1);
+                }
+
+                // Apply visual filter to the canvas
+                ctx.filter = activeFilter;
+                
                 ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+                
                 const dataUrl = canvas.toDataURL('image/jpeg');
                 setImagePreview(dataUrl);
                 setImageData({ base64: dataUrl.split(',')[1], mimeType: 'image/jpeg' });
@@ -103,31 +166,39 @@ const InputArea: React.FC<InputAreaProps> = ({ onAnalyze, isLoading }) => {
     };
 
     const handleSubmit = () => {
-        // FIX: Removed !isConfigured check.
         if (isLoading) return;
         if (inputMode === InputMode.Text) {
             onAnalyze(textInput);
         } else {
-            onAnalyze(undefined, imageData?.base64, imageData?.mimeType);
+            const finalImageDataBase64 = imagePreview?.split(',')[1];
+            const finalMimeType = imagePreview?.match(/data:(.*);/)?.[1] || 'image/png';
+            onAnalyze(undefined, finalImageDataBase64, finalMimeType);
         }
     };
 
-    // FIX: Removed isConfigured from disabled logic.
-    const isSubmitDisabled = isLoading || (inputMode !== InputMode.Text && !imageData) || (inputMode === InputMode.Text && !textInput.trim());
+    const isSubmitDisabled = isLoading || (inputMode !== InputMode.Text && !imagePreview) || (inputMode === InputMode.Text && !textInput.trim());
+
+    const videoStyles: React.CSSProperties = {
+        transform: isMirrored ? 'scaleX(-1)' : 'none',
+        filter: activeFilter,
+        width: '100%',
+        height: '100%',
+        objectFit: 'cover'
+    };
 
     return (
         <div className="bg-gray-800/50 rounded-lg overflow-hidden border border-gray-700">
             <div className="flex">
-                <ModeButton active={inputMode === InputMode.Upload} onClick={() => handleModeChange(InputMode.Upload)}><UploadIcon /> Upload Image</ModeButton>
-                <ModeButton active={inputMode === InputMode.Camera} onClick={() => handleModeChange(InputMode.Camera)}><CameraIcon /> Use Camera</ModeButton>
-                <ModeButton active={inputMode === InputMode.Text} onClick={() => handleModeChange(InputMode.Text)}><TextIcon /> Enter Text</ModeButton>
+                <ModeButton active={inputMode === InputMode.Upload} onClick={() => handleModeChange(InputMode.Upload)}><UploadIcon /> Bild hochladen</ModeButton>
+                <ModeButton active={inputMode === InputMode.Camera} onClick={() => handleModeChange(InputMode.Camera)}><CameraIcon /> Kamera nutzen</ModeButton>
+                <ModeButton active={inputMode === InputMode.Text} onClick={() => handleModeChange(InputMode.Text)}><TextIcon /> Text eingeben</ModeButton>
             </div>
             <div className="p-6">
                 {inputMode === InputMode.Upload && (
                     <div className="text-center">
                         <input type="file" id="file-upload" className="hidden" accept="image/*" onChange={handleFileChange} />
                         <label htmlFor="file-upload" className="cursor-pointer inline-block bg-gray-700 text-cyan-300 font-bold py-3 px-6 rounded-md hover:bg-gray-600 transition-colors duration-200">
-                            Select an Image File
+                            Bilddatei auswählen
                         </label>
                         {imagePreview && <img src={imagePreview} alt="Preview" className="mt-4 max-h-64 mx-auto rounded-lg" />}
                     </div>
@@ -136,19 +207,41 @@ const InputArea: React.FC<InputAreaProps> = ({ onAnalyze, isLoading }) => {
                     <div className="flex flex-col items-center">
                         {cameraError && <p className="text-red-400 mb-4">{cameraError}</p>}
                         <div className="w-full max-w-md bg-black rounded-lg overflow-hidden aspect-video relative">
+                            {/* Camera Controls Overlay */}
+                            {streamRef.current && !imagePreview && (
+                                <div className="absolute top-2 left-2 right-2 z-10 flex items-center justify-between gap-2 bg-black/80 p-2 rounded-lg backdrop-blur-sm">
+                                    <button onClick={() => setIsMirrored(!isMirrored)} title="Bild spiegeln" aria-label="Bild spiegeln" className="p-2 text-white rounded-full hover:bg-white/20 transition-colors">
+                                        <FlipHorizontalIcon className="w-5 h-5" />
+                                    </button>
+                                    
+                                    <button onClick={toggleFlash} disabled={!torchSupported} title={torchSupported ? "Blitz umschalten" : "Blitz nicht verfügbar"} aria-label="Blitz umschalten" className="p-2 text-white rounded-full hover:bg-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                        {isFlashOn ? <FlashOnIcon className="w-5 h-5 text-yellow-300" /> : <FlashOffIcon className="w-5 h-5" />}
+                                    </button>
+                                    
+                                    <select
+                                        value={activeFilter}
+                                        onChange={(e) => setActiveFilter(e.target.value)}
+                                        className="bg-gray-700/80 text-white border border-gray-500 rounded-md px-2 py-1 focus:ring-2 focus:ring-cyan-500 text-sm font-medium"
+                                        aria-label="Kamerafilter"
+                                    >
+                                        {filters.map(f => <option key={f.value} value={f.value} className="bg-gray-800">{f.name}</option>)}
+                                    </select>
+                                </div>
+                            )}
+
                             {imagePreview ? (
                                 <img src={imagePreview} alt="Captured" className="w-full h-full object-cover" />
                              ) : (
-                                <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+                                <video ref={videoRef} autoPlay playsInline style={videoStyles} />
                             )}
                         </div>
                          {streamRef.current && !imagePreview ? (
-                             <button onClick={capturePhoto} className="mt-4 bg-cyan-500 text-white font-bold py-2 px-4 rounded-md hover:bg-cyan-600 transition-colors duration-200">Capture</button>
+                             <button onClick={capturePhoto} className="mt-4 bg-cyan-500 text-white font-bold py-2 px-4 rounded-md hover:bg-cyan-600 transition-colors duration-200">Aufnehmen</button>
                          ) : !imagePreview && !cameraError && (
-                             <button onClick={startCamera} className="mt-4 bg-gray-700 text-cyan-300 font-bold py-2 px-4 rounded-md hover:bg-gray-600 transition-colors duration-200">Start Camera</button>
+                             <button onClick={startCamera} className="mt-4 bg-gray-700 text-cyan-300 font-bold py-2 px-4 rounded-md hover:bg-gray-600 transition-colors duration-200">Kamera starten</button>
                          )}
                          {imagePreview && (
-                             <button onClick={() => { setImagePreview(null); setImageData(null); startCamera(); }} className="mt-4 bg-red-500 text-white font-bold py-2 px-4 rounded-md hover:bg-red-600 transition-colors duration-200">Retake</button>
+                             <button onClick={() => { setImagePreview(null); setImageData(null); startCamera(); }} className="mt-4 bg-red-500 text-white font-bold py-2 px-4 rounded-md hover:bg-red-600 transition-colors duration-200">Wiederholen</button>
                          )}
                     </div>
                 )}
@@ -156,7 +249,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onAnalyze, isLoading }) => {
                     <textarea
                         value={textInput}
                         onChange={(e) => setTextInput(e.target.value)}
-                        placeholder="Enter Model Number, S/N, Chip ID, etc."
+                        placeholder="Modellnummer, S/N, Chip-ID, etc. eingeben."
                         className="w-full h-32 bg-gray-900 text-green-300 p-3 rounded-md border border-gray-700 focus:ring-2 focus:ring-cyan-500 focus:outline-none resize-none transition-all duration-300"
                     />
                 )}
@@ -166,9 +259,8 @@ const InputArea: React.FC<InputAreaProps> = ({ onAnalyze, isLoading }) => {
                         disabled={isSubmitDisabled}
                         className="w-full max-w-xs bg-green-500 text-gray-900 font-bold text-lg py-3 px-6 rounded-md hover:bg-green-400 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105"
                     >
-                        {isLoading ? 'Analyzing...' : 'Analyze'}
+                        {isLoading ? 'Analysiere...' : 'Analysieren'}
                     </button>
-                    {/* FIX: Removed message about configuring API key. */}
                 </div>
             </div>
         </div>
