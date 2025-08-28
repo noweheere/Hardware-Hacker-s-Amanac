@@ -1,5 +1,7 @@
 {
-  "requestFramePermissions": [],
+  "requestFramePermissions": [
+    "camera"
+  ],
   "name": "",
   "description": ""
 }
