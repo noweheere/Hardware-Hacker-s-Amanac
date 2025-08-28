@@ -209,23 +209,46 @@ const InputArea: React.FC<InputAreaProps> = ({ onAnalyze, isLoading, imagePrevie
                         <div className="w-full max-w-md bg-black rounded-lg overflow-hidden aspect-video relative">
                             {/* Camera Controls Overlay */}
                             {streamRef.current && !imagePreview && (
-                                <div className="absolute top-2 left-2 right-2 z-10 flex items-center justify-between gap-2 bg-black/80 p-2 rounded-lg backdrop-blur-sm">
-                                    <button onClick={() => setIsMirrored(!isMirrored)} title="Bild spiegeln" aria-label="Bild spiegeln" className="p-2 text-white rounded-full hover:bg-white/20 transition-colors">
-                                        <FlipHorizontalIcon className="w-5 h-5" />
-                                    </button>
-                                    
-                                    <button onClick={toggleFlash} disabled={!torchSupported} title={torchSupported ? "Blitz umschalten" : "Blitz nicht verfügbar"} aria-label="Blitz umschalten" className="p-2 text-white rounded-full hover:bg-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                                        {isFlashOn ? <FlashOnIcon className="w-5 h-5 text-yellow-300" /> : <FlashOffIcon className="w-5 h-5" />}
-                                    </button>
-                                    
-                                    <select
-                                        value={activeFilter}
-                                        onChange={(e) => setActiveFilter(e.target.value)}
-                                        className="bg-gray-700/80 text-white border border-gray-500 rounded-md px-2 py-1 focus:ring-2 focus:ring-cyan-500 text-sm font-medium"
-                                        aria-label="Kamerafilter"
+                                <div className="absolute bottom-0 left-0 right-0 z-10 flex items-center justify-around gap-2 bg-black/50 p-3 backdrop-blur-sm">
+                                    {/* Mirror Button */}
+                                    <button 
+                                        onClick={() => setIsMirrored(!isMirrored)} 
+                                        title="Bild spiegeln" 
+                                        aria-label="Bild spiegeln"
+                                        aria-pressed={isMirrored}
+                                        className={`p-3 rounded-full transition-colors ${isMirrored ? 'bg-cyan-500 text-white' : 'text-gray-200 bg-gray-900/60 hover:bg-gray-700/80'}`}
                                     >
-                                        {filters.map(f => <option key={f.value} value={f.value} className="bg-gray-800">{f.name}</option>)}
-                                    </select>
+                                        <FlipHorizontalIcon className="w-6 h-6" />
+                                    </button>
+                                    
+                                    {/* Flash Button */}
+                                    <button 
+                                        onClick={toggleFlash} 
+                                        disabled={!torchSupported} 
+                                        title={torchSupported ? "Blitz umschalten" : "Blitz nicht verfügbar"} 
+                                        aria-label="Blitz umschalten" 
+                                        aria-pressed={isFlashOn}
+                                        className="p-3 text-gray-200 bg-gray-900/60 rounded-full hover:bg-gray-700/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {isFlashOn ? <FlashOnIcon className="w-6 h-6 text-yellow-300" /> : <FlashOffIcon className="w-6 h-6" />}
+                                    </button>
+                                    
+                                    {/* Filter Select */}
+                                    <div className="relative">
+                                        <label htmlFor="camera-filter" className="sr-only">Kamerafilter</label>
+                                        <select
+                                            id="camera-filter"
+                                            value={activeFilter}
+                                            onChange={(e) => setActiveFilter(e.target.value)}
+                                            className="bg-gray-900/60 text-gray-200 border-2 border-transparent rounded-full pl-4 pr-10 py-2.5 appearance-none focus:ring-2 focus:ring-cyan-500 focus:outline-none text-base font-medium"
+                                            aria-label="Kamerafilter"
+                                        >
+                                            {filters.map(f => <option key={f.value} value={f.value} className="bg-gray-800 font-medium">{f.name}</option>)}
+                                        </select>
+                                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-300">
+                                            <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
 
