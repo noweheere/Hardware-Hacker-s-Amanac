@@ -1,0 +1,7 @@
+{
+  "name": "Copy of Hardware Hacker's Almanac",
+  "description": "Identify hardware components via photo, camera, or text. Get specs, datasheets, hacking guides, and find resources for your next project. Save your notes and track your progress.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
