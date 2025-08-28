@@ -1,42 +1,49 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hardware Hacker's Almanac</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
-      /* Custom scrollbar for a more thematic feel */
-      ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
+      :root {
+        --background-color: #1a1b26;
+        --foreground-color: #24283b;
+        --text-color: #c0caf5;
+        --primary-color: #7aa2f7;
+        --secondary-color: #bb9af7;
+        --success-color: #9ece6a;
+        --danger-color: #f7768e;
+        --border-color: #414868;
+        --font-family: 'Roboto Mono', monospace;
       }
-      ::-webkit-scrollbar-track {
-        background: #1a202c; /* gray-800 */
+      body {
+        background-color: var(--background-color);
+        color: var(--text-color);
+        font-family: var(--font-family);
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
       }
-      ::-webkit-scrollbar-thumb {
-        background: #4a5568; /* gray-600 */
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #718096; /* gray-500 */
+      #root {
+        height: 100vh;
+        width: 100vw;
       }
     </style>
   <script type="importmap">
 {
   "imports": {
-    "react/": "https://aistudiocdn.com/react@^19.1.1/",
     "react": "https://aistudiocdn.com/react@^19.1.1",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.16.0"
+    "react/": "https://aistudiocdn.com/react@^19.1.1/"
   }
 }
 </script>
 </head>
-  <body class="bg-gray-900 text-gray-200 font-mono">
+  <body>
     <div id="root"></div>
-    <!-- PDF Generation Libraries -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script type="module" src="/index.tsx"></script>
   </body>
 </html>

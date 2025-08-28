@@ -1,0 +1,6 @@
+customtkinter
+google-generativeai
+python-dotenv
+opencv-python-headless
+Pillow
+fpdf2

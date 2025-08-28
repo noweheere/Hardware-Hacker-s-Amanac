@@ -1,24 +1,53 @@
-
 import React from 'react';
 
 interface NotesSectionProps {
   notes: string;
-  setNotes: (notes: string) => void;
+  onNotesChange: (notes: string) => void;
 }
 
-const NotesSection: React.FC<NotesSectionProps> = ({ notes, setNotes }) => {
+const NotesSection = ({ notes, onNotesChange }: NotesSectionProps) => {
   return (
-    <div className="bg-gray-800/50 rounded-lg p-4">
-      <h2 className="text-xl font-bold text-cyan-400 mb-3 border-b border-cyan-400/30 pb-2">Project Notes</h2>
+    <section style={styles.container} aria-labelledby="notes-heading">
+      <h2 id="notes-heading" style={styles.heading}>Projektnotizen</h2>
       <textarea
+        style={styles.textarea}
         value={notes}
-        onChange={(e) => setNotes(e.target.value)}
-        placeholder="> Start typing your project notes here... Saved automatically."
-        className="w-full h-64 bg-gray-900 text-green-300 p-3 rounded-md border border-gray-700 focus:ring-2 focus:ring-cyan-500 focus:outline-none resize-y transition-all duration-300"
+        onChange={(e) => onNotesChange(e.target.value)}
+        placeholder="Deine Notizen hier..."
+        aria-label="Projektnotizen"
       />
-      <p className="text-xs text-gray-500 mt-2">Notes are saved to your browser's local storage.</p>
-    </div>
+    </section>
   );
+};
+
+const styles: { [key: string]: React.CSSProperties } = {
+  container: {
+    backgroundColor: 'var(--foreground-color)',
+    border: '1px solid var(--border-color)',
+    borderRadius: '8px',
+    padding: '1rem',
+    flexGrow: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+  },
+  heading: {
+    margin: '0 0 1rem 0',
+    fontSize: '1rem',
+    color: 'var(--secondary-color)',
+    borderBottom: '1px solid var(--border-color)',
+    paddingBottom: '0.5rem',
+  },
+  textarea: {
+    flexGrow: 1,
+    backgroundColor: 'var(--background-color)',
+    color: 'var(--text-color)',
+    border: '1px solid var(--border-color)',
+    borderRadius: '4px',
+    padding: '0.5rem',
+    fontFamily: 'var(--font-family)',
+    resize: 'none',
+  },
 };
 
 export default NotesSection;

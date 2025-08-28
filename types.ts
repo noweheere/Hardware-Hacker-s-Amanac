@@ -1,45 +1,16 @@
-
-export enum InputMode {
-  Upload = 'Upload',
-  Camera = 'Camera',
-  Text = 'Text',
-}
-
-// FIX: Removed AiProvider enum as it's no longer needed after refactoring to use a single provider via environment variables.
-
-export interface HackingResource {
-  title: string;
-  url: string;
-  description: string;
-}
-
-export interface ToolResource {
-    name: string;
-    url: string;
-    description: string;
-}
-
-export interface CommunityResource {
-    name: string;
-    url: string;
-    community: string;
-}
-
 export interface AnalysisResult {
   componentName: string;
   description: string;
-  specifications: string[];
+  specifications: Record<string, string>;
   datasheetUrl: string;
-  tutorials: HackingResource[];
-  tools: ToolResource[];
-  communities: CommunityResource[];
+  hackingGuide: string;
+  recommendedTools: string[];
+  communityLinks: string[];
 }
 
-export interface ProjectData {
-    result: AnalysisResult;
-    notes: string;
-    sourceImage?: {
-        base64: string;
-        mimeType: string;
-    };
+export interface AppState {
+  isLoading: boolean;
+  error: string | null;
+  analysisResult: AnalysisResult | null;
+  notes: string;
 }

@@ -1,20 +1,42 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Hardware Hacker's Almanac - Web Edition
 
-# Run and deploy your AI Studio app
+Dies ist eine webbasierte Anwendung, die mit React und TypeScript erstellt wurde. Sie ermöglicht es Ihnen, Hardware-Komponenten mittels Bild-Upload, Live-Kamera oder Texteingabe zu identifizieren und detaillierte Analysen von der Google Gemini API zu erhalten.
 
-This contains everything you need to run your app locally.
+## Funktionen (Geplant)
 
-View your app in AI Studio: https://ai.studio/apps/drive/1ByqYs2Ly6rabPJadOXnPbYg3zefk4_Zi
+- **Drei Eingabemodi:** Bilddatei hochladen, Live-Kamera verwenden oder Komponentenname als Text eingeben.
+- **Detaillierte KI-Analyse:** Erhalten Sie den Komponentennamen, eine Beschreibung, Spezifikationen und mehr.
+- **Projektverwaltung:** Speichern und laden Sie Ihre Analyseergebnisse und Notizen lokal.
+- **PDF-Export:** Exportieren Sie den vollständigen Analysebericht als PDF.
 
-## Run Locally
+## Einrichtung und Ausführung
 
-**Prerequisites:**  Node.js
+### 1. Voraussetzungen
 
+- Node.js und npm (oder ein anderer Paketmanager) müssen installiert sein.
+- Ein Google Gemini API-Schlüssel ist erforderlich.
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### 2. Installation
+
+1.  Klonen Sie das Repository.
+2.  Installieren Sie die Abhängigkeiten:
+    ```bash
+    npm install
+    ```
+
+### 3. API-Schlüssel konfigurieren
+
+1.  Erstellen Sie eine `.env`-Datei im Hauptverzeichnis.
+2.  Fügen Sie Ihren API-Schlüssel hinzu:
+    ```
+    VITE_GEMINI_API_KEY=DEIN_API_SCHLUESSEL_HIER
+    ```
+
+### 4. Anwendung starten
+
+Führen Sie den Entwicklungsserver aus:
+```bash
+npm run dev
+```
+
+Die Anwendung sollte nun in Ihrem Browser verfügbar sein.

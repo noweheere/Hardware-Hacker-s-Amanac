@@ -1,44 +1,46 @@
 import React from 'react';
-import { DocumentDownloadIcon, FolderOpenIcon, SaveIcon } from './Icons';
 
-interface ProjectActionsProps {
-    onSave: () => void;
-    onLoad: () => void;
-    onExportPdf: () => void;
-    disabled: boolean;
-}
+const ProjectActions = () => {
+  return (
+    <section style={styles.container} aria-labelledby="actions-heading">
+      <h2 id="actions-heading" style={styles.heading}>Projekt</h2>
+      <div style={styles.buttonGroup}>
+        <button style={styles.button}>Speichern</button>
+        <button style={styles.button}>Laden</button>
+        <button style={styles.button}>Als PDF exportieren</button>
+      </div>
+    </section>
+  );
+};
 
-const ActionButton: React.FC<{ onClick: () => void; disabled: boolean; children: React.ReactNode }> = ({ onClick, disabled, children }) => (
-    <button
-        onClick={onClick}
-        disabled={disabled}
-        className="flex items-center justify-center gap-2 w-full bg-gray-700 text-cyan-300 font-bold py-2 px-4 rounded-md hover:bg-gray-600 transition-colors duration-200 disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed"
-    >
-        {children}
-    </button>
-);
-
-const ProjectActions: React.FC<ProjectActionsProps> = ({ onSave, onLoad, onExportPdf, disabled }) => {
-    return (
-        <div className="bg-gray-800/50 rounded-lg p-4">
-            <h2 className="text-xl font-bold text-cyan-400 mb-4 border-b border-cyan-400/30 pb-2">Projekt-Aktionen</h2>
-            <div className="space-y-3">
-                <ActionButton onClick={onSave} disabled={disabled}>
-                    <SaveIcon />
-                    Projekt speichern
-                </ActionButton>
-                <ActionButton onClick={onLoad} disabled={false}> {/* Load is always enabled */}
-                    <FolderOpenIcon />
-                    Projekt laden
-                </ActionButton>
-                 <ActionButton onClick={onExportPdf} disabled={disabled}>
-                    <DocumentDownloadIcon />
-                    PDF exportieren
-                </ActionButton>
-            </div>
-             <p className="text-xs text-gray-500 mt-3">Speichern Sie Ihr Projekt als JSON-Datei oder laden Sie eine vorhandene. Exportieren Sie einen PDF-Bericht zum Teilen.</p>
-        </div>
-    );
+const styles: { [key: string]: React.CSSProperties } = {
+  container: {
+    backgroundColor: 'var(--foreground-color)',
+    border: '1px solid var(--border-color)',
+    borderRadius: '8px',
+    padding: '1rem',
+  },
+  heading: {
+    margin: '0 0 1rem 0',
+    fontSize: '1rem',
+    color: 'var(--secondary-color)',
+    borderBottom: '1px solid var(--border-color)',
+    paddingBottom: '0.5rem',
+  },
+  buttonGroup: {
+    display: 'flex',
+    gap: '0.5rem',
+  },
+  button: {
+    flex: 1,
+    backgroundColor: 'var(--border-color)',
+    color: 'var(--text-color)',
+    border: '1px solid var(--border-color)',
+    padding: '0.5rem',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontFamily: 'var(--font-family)',
+  },
 };
 
 export default ProjectActions;

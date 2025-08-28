@@ -1,218 +1,95 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import Header from './components/Header';
 import InputArea from './components/InputArea';
 import ResultsDisplay from './components/ResultsDisplay';
 import NotesSection from './components/NotesSection';
-import Instructions from './components/Instructions'; 
 import ProjectActions from './components/ProjectActions';
-import SettingsModal from './components/SettingsModal';
-import { InfoIcon } from './components/Icons'; 
-import { AnalysisResult, ProjectData } from './types'; 
-import { analyzeHardware } from './services/geminiService';
-import { generatePdf } from './services/pdfService';
-import useLocalStorage from './hooks/useLocalStorage';
+import Instructions from './components/Instructions';
+import { AnalysisResult, AppState } from './types';
 
-const App: React.FC = () => {
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<AnalysisResult | null>(null);
-  const [notes, setNotes] = useLocalStorage<string>('hackingNotes', '');
-  
-  // Lifted state for image data to allow project loading to update the UI
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageData, setImageData] = useState<{ base64: string; mimeType: string } | null>(null);
+const App = () => {
+  const [appState, setAppState] = useState<AppState>({
+    isLoading: false,
+    error: null,
+    analysisResult: null,
+    notes: '',
+  });
 
-  const [lastAnalysisRequest, setLastAnalysisRequest] = useState<{ textInput?: string; imageBase64?: string; mimeType?: string } | null>(null);
-  const [showInstructions, setShowInstructions] = useState<boolean>(false); 
-  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleAnalysis = async (textInput?: string, imageBase64?: string, mimeType?: string) => {
-    // Store the request so we can retry it
-    setLastAnalysisRequest({ textInput, imageBase64, mimeType });
-    
-    setIsLoading(true);
-    setError(null);
-    setResult(null);
-
-    // Update imageData state from the analysis call
-    if (imageBase64 && mimeType) {
-        setImageData({ base64: imageBase64, mimeType: mimeType });
-        if (!imagePreview?.includes(imageBase64)) {
-           setImagePreview(`data:${mimeType};base64,${imageBase64}`);
-        }
-    } else {
-        setImageData(null);
-        setImagePreview(null);
-    }
-
-    try {
-      const analysisResult = await analyzeHardware(textInput, imageBase64, mimeType);
-      setResult(analysisResult);
-    } catch (e: unknown) {
-      if (e instanceof Error) {
-        setError(e.message);
-      } else {
-        setError("An unknown error occurred.");
+  const handleAnalysis = async (prompt: string, image?: string) => {
+    // Platzhalter für die API-Aufruffunktion
+    console.log('Analyse gestartet', { prompt, image: image?.substring(0, 30) });
+    setAppState(prev => ({ ...prev, isLoading: true, error: null, analysisResult: null }));
+    // Simuliert einen API-Aufruf
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    setAppState(prev => ({
+      ...prev,
+      isLoading: false,
+      analysisResult: {
+        componentName: 'Beispiel-Chip',
+        description: 'Dies ist ein Platzhalter für die Komponentendetails.',
+        specifications: { 'Spannung': '3.3V', 'Taktfrequenz': '16MHz' },
+        datasheetUrl: 'https://example.com/datasheet.pdf',
+        hackingGuide: 'Schritt 1: ...',
+        recommendedTools: ['Lötkolben', 'Multimeter'],
+        communityLinks: ['https://forum.example.com']
       }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const handleRetry = () => {
-    if (lastAnalysisRequest) {
-        handleAnalysis(
-            lastAnalysisRequest.textInput,
-            lastAnalysisRequest.imageBase64,
-            lastAnalysisRequest.mimeType
-        );
-    }
+    }));
   };
 
-  const handleSaveProject = () => {
-    if (!result) return;
-    const projectData: ProjectData = {
-      result,
-      notes,
-      sourceImage: imageData ?? undefined,
-    };
-    const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `hha-project-${result.componentName.replace(/\s+/g, '_')}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const handleLoadProjectClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const text = e.target?.result as string;
-        const projectData: ProjectData = JSON.parse(text);
-
-        // Validate loaded data
-        if (projectData.result && projectData.result.componentName && typeof projectData.notes === 'string') {
-          setResult(projectData.result);
-          setNotes(projectData.notes);
-          if (projectData.sourceImage) {
-            setImageData(projectData.sourceImage);
-            setImagePreview(`data:${projectData.sourceImage.mimeType};base64,${projectData.sourceImage.base64}`);
-          } else {
-            setImageData(null);
-            setImagePreview(null);
-          }
-           // Clear any previous error
-           setError(null);
-        } else {
-          throw new Error('Invalid project file structure.');
-        }
-      } catch (err) {
-        console.error("Failed to load project file:", err);
-        setError(`Failed to load project file. Make sure it is a valid JSON file generated by this application. Error: ${(err as Error).message}`);
-      }
-    };
-    reader.readAsText(file);
-
-    // Reset file input to allow loading the same file again
-    event.target.value = '';
-  };
-
-  const handleExportPdf = async () => {
-    if (!result) return;
-    setIsLoading(true);
-    try {
-        await generatePdf({
-            result,
-            notes,
-            sourceImage: imageData ?? undefined,
-        });
-    } catch (err) {
-        console.error("PDF Export failed", err);
-        setError("Could not generate PDF. See console for more details.");
-    } finally {
-        setIsLoading(false);
-    }
-  };
-
-  const handleClearNotes = () => {
-    if (window.confirm('Sind Sie sicher, dass Sie alle Projektnotizen löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.')) {
-        setNotes('');
-        setIsSettingsOpen(false);
-    }
+  const handleNotesChange = (notes: string) => {
+    setAppState(prev => ({ ...prev, notes }));
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-200">
-      <Header onSettingsClick={() => setIsSettingsOpen(true)} />
-      <main className="container mx-auto p-4 md:p-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <InputArea 
-              onAnalyze={handleAnalysis} 
-              isLoading={isLoading} 
-              imagePreview={imagePreview}
-              setImagePreview={setImagePreview}
-              setImageData={setImageData}
-            />
-            <ResultsDisplay result={result} isLoading={isLoading} error={error} onRetry={handleRetry} />
-          </div>
-          <div className="lg:col-span-1 space-y-6">
-            <ProjectActions 
-              onSave={handleSaveProject}
-              onLoad={handleLoadProjectClick}
-              onExportPdf={handleExportPdf}
-              disabled={!result || isLoading}
-            />
-            <NotesSection notes={notes} setNotes={setNotes} />
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileSelected}
-              accept="application/json"
-              className="hidden"
-            />
-          </div>
+    <div style={styles.app}>
+      <Header />
+      <main style={styles.main}>
+        <div style={styles.leftPanel}>
+          <InputArea onAnalysis={handleAnalysis} isLoading={appState.isLoading} />
+          <ResultsDisplay 
+            result={appState.analysisResult} 
+            isLoading={appState.isLoading} 
+            error={appState.error} 
+          />
         </div>
-
-        <div className="mt-8">
-            <div className="text-center">
-                <button
-                    onClick={() => setShowInstructions(!showInstructions)}
-                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-cyan-300 bg-gray-800/50 border border-gray-700 rounded-md hover:bg-gray-700 transition-colors"
-                >
-                    <InfoIcon className="w-5 h-5" />
-                    {showInstructions ? 'Anleitung ausblenden' : 'Anleitung zum Ausführen anzeigen'}
-                </button>
-            </div>
-            {showInstructions && <Instructions />}
+        <div style={styles.rightPanel}>
+          <ProjectActions />
+          <NotesSection notes={appState.notes} onNotesChange={handleNotesChange} />
+          <Instructions />
         </div>
-        
-        <footer className="text-center text-gray-600 mt-8 py-4">
-            <p>Powered by Google Gemini</p>
-        </footer>
       </main>
-      
-      {isSettingsOpen && (
-        <SettingsModal 
-            onClose={() => setIsSettingsOpen(false)}
-            onClearNotes={handleClearNotes}
-        />
-      )}
     </div>
   );
+};
+
+const styles: { [key: string]: React.CSSProperties } = {
+  app: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100vh',
+    backgroundColor: 'var(--background-color)',
+    color: 'var(--text-color)',
+  },
+  main: {
+    display: 'grid',
+    gridTemplateColumns: '2fr 1fr',
+    flexGrow: 1,
+    gap: '1rem',
+    padding: '1rem',
+    overflow: 'hidden',
+  },
+  leftPanel: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1rem',
+    overflow: 'hidden',
+  },
+  rightPanel: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1rem',
+    overflow: 'hidden',
+  },
 };
 
 export default App;
