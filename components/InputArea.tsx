@@ -1,20 +1,27 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Spinner from './Spinner';
-import { CameraIcon, CameraOffIcon, CaptureIcon } from './Icons';
+import { CameraIcon, CameraOffIcon, CaptureIcon, WifiIcon } from './Icons';
 
 interface InputAreaProps {
   onAnalysis: (prompt: string, image?: string) => void;
   isLoading: boolean;
 }
 
+type CameraMode = 'builtin' | 'ipcam';
+
 const InputArea = ({ onAnalysis, isLoading }: InputAreaProps) => {
+  const [cameraMode, setCameraMode] = useState<CameraMode>('builtin');
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [ipCamUrl, setIpCamUrl] = useState('');
+  const [isIpCamConnected, setIsIpCamConnected] = useState(false);
+  const [ipCamError, setIpCamError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState('Standard');
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const ipCamRef = useRef<HTMLImageElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
   const stopCameraStream = () => {
@@ -22,19 +29,40 @@ const InputArea = ({ onAnalysis, isLoading }: InputAreaProps) => {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
+    setIsCameraActive(false);
+  };
+  
+  const handleIpCamDisconnect = () => {
+    if (ipCamRef.current) {
+      ipCamRef.current.src = '';
+    }
+    setIsIpCamConnected(false);
+    setIpCamError(null);
+  };
+  
+  const switchCameraMode = (mode: CameraMode) => {
+    if (cameraMode === mode) return;
+    stopCameraStream();
+    handleIpCamDisconnect();
+    setCapturedImage(null);
+    setCameraError(null);
+    setIpCamError(null);
+    setCameraMode(mode);
   };
 
   const startCameraStream = async () => {
+    if (isCameraActive) return;
     try {
       setCameraError(null);
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
+        setIsCameraActive(true);
       }
     } catch (err) {
       console.error("Kamerafehler:", err);
-      setCameraError("Kamerazugriff verweigert. Bitte Berechtigungen in den Browsereinstellungen prüfen.");
+      setCameraError("Kamerazugriff verweigert. Bitte Berechtigungen prüfen.");
       setIsCameraActive(false);
     }
   };
@@ -42,35 +70,51 @@ const InputArea = ({ onAnalysis, isLoading }: InputAreaProps) => {
   const toggleCamera = () => {
     if (isCameraActive) {
       stopCameraStream();
-      setIsCameraActive(false);
-      setCapturedImage(null);
     } else {
-      setIsCameraActive(true);
       startCameraStream();
     }
   };
 
+  const handleIpCamConnect = () => {
+    if (!ipCamUrl) {
+        setIpCamError("Bitte eine gültige URL eingeben.");
+        return;
+    }
+    setIpCamError(null);
+    setIsIpCamConnected(true);
+  };
+
   const handleCapture = () => {
-    if (videoRef.current && canvasRef.current) {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const context = canvas.getContext('2d');
-      if (context) {
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext('2d');
+    if (!canvas || !context) return;
+
+    let source: HTMLVideoElement | HTMLImageElement | null = null;
+    if (cameraMode === 'builtin' && videoRef.current) {
+        source = videoRef.current;
+        canvas.width = videoRef.current.videoWidth;
+        canvas.height = videoRef.current.videoHeight;
+    } else if (cameraMode === 'ipcam' && ipCamRef.current) {
+        source = ipCamRef.current;
+        canvas.width = ipCamRef.current.naturalWidth;
+        canvas.height = ipCamRef.current.naturalHeight;
+    }
+
+    if (source) {
+        context.drawImage(source, 0, 0, canvas.width, canvas.height);
         const dataUrl = canvas.toDataURL('image/jpeg');
         setCapturedImage(dataUrl);
-        stopCameraStream();
-        setIsCameraActive(false);
-      }
+        if (cameraMode === 'builtin') {
+          stopCameraStream();
+        }
     }
   };
 
   const clearCapture = () => {
     setCapturedImage(null);
-    setIsCameraActive(true);
-    startCameraStream();
+    if (cameraMode === 'builtin') {
+      startCameraStream();
+    }
   };
 
   const handleAnalyzeClick = () => {
@@ -90,48 +134,85 @@ const InputArea = ({ onAnalysis, isLoading }: InputAreaProps) => {
   return (
     <section style={styles.container} aria-labelledby="input-heading">
       <h2 id="input-heading" style={styles.heading}>Eingabe</h2>
+
+      <div style={styles.tabs}>
+        <button onClick={() => switchCameraMode('builtin')} style={cameraMode === 'builtin' ? {...styles.tab, ...styles.activeTab} : styles.tab}><CameraIcon/> Integrierte Kamera</button>
+        <button onClick={() => switchCameraMode('ipcam')} style={cameraMode === 'ipcam' ? {...styles.tab, ...styles.activeTab} : styles.tab}><WifiIcon/> IP-Kamera</button>
+      </div>
       
-      <div style={styles.inputMethods}>
-        <button onClick={toggleCamera} style={styles.cameraToggleButton}>
-          {isCameraActive ? <CameraOffIcon /> : <CameraIcon />}
-          {isCameraActive ? 'Kamera deaktivieren' : 'Kamera aktivieren'}
-        </button>
-        
-        <div style={styles.cameraView}>
-          {cameraError && <p style={styles.errorText}>{cameraError}</p>}
-          {!capturedImage && (
-            <video
-              ref={videoRef}
-              style={{ ...styles.video, display: isCameraActive ? 'block' : 'none' }}
-              autoPlay
-              playsInline
-              muted
-            />
-          )}
-          {capturedImage && (
-            <img src={capturedImage} alt="Aufgenommenes Bild" style={styles.video} />
-          )}
-          {!isCameraActive && !capturedImage && !cameraError && (
-              <div style={styles.placeholder}>
-                  <CameraIcon />
-                  <p>Kamera ist aus</p>
-              </div>
+      {cameraMode === 'builtin' && (
+        <div style={styles.inputMethods}>
+          <button onClick={toggleCamera} style={styles.cameraToggleButton}>
+            {isCameraActive ? <CameraOffIcon /> : <CameraIcon />}
+            {isCameraActive ? 'Kamera deaktivieren' : 'Kamera aktivieren'}
+          </button>
+        </div>
+      )}
+
+      {cameraMode === 'ipcam' && (
+        <div style={styles.ipCamControls}>
+          <input 
+            type="text" 
+            value={ipCamUrl}
+            onChange={(e) => setIpCamUrl(e.target.value)}
+            placeholder="http://192.168.1.10:4747/video"
+            style={styles.urlInput}
+            aria-label="IP-Kamera URL"
+            disabled={isIpCamConnected}
+          />
+          {!isIpCamConnected ? (
+             <button onClick={handleIpCamConnect} style={styles.connectButton}>Verbinden</button>
+          ) : (
+             <button onClick={handleIpCamDisconnect} style={styles.disconnectButton}>Trennen</button>
           )}
         </div>
-        <canvas ref={canvasRef} style={{ display: 'none' }} />
-        
-        {isCameraActive && !capturedImage && (
-          <button onClick={handleCapture} style={styles.captureButton}>
-            <CaptureIcon /> Foto aufnehmen
-          </button>
-        )}
-        
-        {capturedImage && (
-           <button onClick={clearCapture} style={styles.secondaryButton}>
-             Wiederholen
-           </button>
+      )}
+      
+      <div style={styles.cameraView}>
+        {capturedImage ? (
+          <img src={capturedImage} alt="Aufgenommenes Bild" style={styles.video} />
+        ) : (
+          <>
+            {cameraMode === 'builtin' && isCameraActive && <video ref={videoRef} style={styles.video} autoPlay playsInline muted />}
+            {cameraMode === 'ipcam' && isIpCamConnected && (
+                <img 
+                    ref={ipCamRef} 
+                    src={ipCamUrl} 
+                    style={styles.video} 
+                    alt="IP-Kamera Stream" 
+                    crossOrigin="anonymous"
+                    onError={() => {
+                      setIpCamError("Stream konnte nicht geladen werden. URL prüfen oder CORS-Problem.");
+                      setIsIpCamConnected(false);
+                    }}
+                />
+            )}
+            
+            {!isCameraActive && !isIpCamConnected && !cameraError && !ipCamError && (
+              <div style={styles.placeholder}>
+                {cameraMode === 'builtin' ? <CameraIcon /> : <WifiIcon />}
+                <p>{cameraMode === 'builtin' ? "Kamera ist aus" : "IP-Kamera nicht verbunden"}</p>
+              </div>
+            )}
+            
+            {cameraError && <p style={styles.errorText}>{cameraError}</p>}
+            {ipCamError && <p style={styles.errorText}>{ipCamError}</p>}
+          </>
         )}
       </div>
+      <canvas ref={canvasRef} style={{ display: 'none' }} />
+        
+      {!capturedImage && (isCameraActive || isIpCamConnected) && (
+        <button onClick={handleCapture} style={styles.captureButton}>
+          <CaptureIcon /> Foto aufnehmen
+        </button>
+      )}
+      
+      {capturedImage && (
+         <button onClick={clearCapture} style={styles.secondaryButton}>
+           Wiederholen
+         </button>
+      )}
 
       <div style={styles.filterSection}>
           <h3 style={styles.subHeading}>Filter & Modi</h3>
@@ -180,6 +261,29 @@ const styles: { [key: string]: React.CSSProperties } = {
         borderBottom: '1px solid var(--border-color)',
         paddingBottom: '0.5rem',
     },
+    tabs: {
+        display: 'flex',
+        gap: '0.5rem',
+    },
+    tab: {
+        flex: 1,
+        backgroundColor: 'var(--border-color)',
+        color: 'var(--text-color)',
+        border: '1px solid var(--border-color)',
+        padding: '0.5rem',
+        borderRadius: '4px',
+        cursor: 'pointer',
+        fontFamily: 'var(--font-family)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: '0.5rem',
+        transition: 'background-color 0.2s',
+    },
+    activeTab: {
+        backgroundColor: 'var(--primary-color)',
+        color: '#fff',
+    },
     subHeading: {
         margin: '0 0 0.5rem 0',
         fontSize: '0.9rem',
@@ -190,6 +294,37 @@ const styles: { [key: string]: React.CSSProperties } = {
         display: 'flex',
         flexDirection: 'column',
         gap: '0.5rem',
+    },
+    ipCamControls: {
+        display: 'flex',
+        gap: '0.5rem',
+    },
+    urlInput: {
+        flexGrow: 1,
+        backgroundColor: 'var(--background-color)',
+        color: 'var(--text-color)',
+        border: '1px solid var(--border-color)',
+        borderRadius: '4px',
+        padding: '0.5rem',
+        fontFamily: 'var(--font-family)',
+    },
+    connectButton: {
+        backgroundColor: 'var(--success-color)',
+        color: '#fff',
+        border: 'none',
+        padding: '0.5rem 1rem',
+        borderRadius: '4px',
+        cursor: 'pointer',
+        fontFamily: 'var(--font-family)',
+    },
+    disconnectButton: {
+        backgroundColor: 'var(--danger-color)',
+        color: '#fff',
+        border: 'none',
+        padding: '0.5rem 1rem',
+        borderRadius: '4px',
+        cursor: 'pointer',
+        fontFamily: 'var(--font-family)',
     },
     cameraView: {
         width: '100%',

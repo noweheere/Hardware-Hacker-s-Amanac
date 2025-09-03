@@ -6,6 +6,7 @@ import NotesSection from './components/NotesSection';
 import ProjectActions from './components/ProjectActions';
 import Instructions from './components/Instructions';
 import { AnalysisResult, AppState } from './types';
+import { analyzeComponent } from './services/geminiService';
 
 const App = () => {
   const [appState, setAppState] = useState<AppState>({
@@ -16,24 +17,30 @@ const App = () => {
   });
 
   const handleAnalysis = async (prompt: string, image?: string) => {
-    // Platzhalter für die API-Aufruffunktion
-    console.log('Analyse gestartet', { prompt, image: image?.substring(0, 30) });
+    if (!image) {
+      setAppState(prev => ({ ...prev, error: "Kein Bild zum Analysieren vorhanden." }));
+      return;
+    }
+
+    console.log('Analyse gestartet', { prompt });
     setAppState(prev => ({ ...prev, isLoading: true, error: null, analysisResult: null }));
-    // Simuliert einen API-Aufruf
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setAppState(prev => ({
-      ...prev,
-      isLoading: false,
-      analysisResult: {
-        componentName: 'Beispiel-Chip',
-        description: 'Dies ist ein Platzhalter für die Komponentendetails.',
-        specifications: { 'Spannung': '3.3V', 'Taktfrequenz': '16MHz' },
-        datasheetUrl: 'https://example.com/datasheet.pdf',
-        hackingGuide: 'Schritt 1: ...',
-        recommendedTools: ['Lötkolben', 'Multimeter'],
-        communityLinks: ['https://forum.example.com']
-      }
-    }));
+    
+    try {
+      const result = await analyzeComponent(prompt, image);
+      setAppState(prev => ({
+        ...prev,
+        isLoading: false,
+        analysisResult: result,
+      }));
+    } catch (err) {
+      const error = err as Error;
+      console.error(error);
+      setAppState(prev => ({
+        ...prev,
+        isLoading: false,
+        error: error.message || "Ein unerwarteter Fehler ist aufgetreten.",
+      }));
+    }
   };
 
   const handleNotesChange = (notes: string) => {

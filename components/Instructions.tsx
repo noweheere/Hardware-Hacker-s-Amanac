@@ -5,8 +5,8 @@ const Instructions = () => {
     <section style={styles.container} aria-labelledby="instructions-heading">
       <h2 id="instructions-heading" style={styles.heading}>Anleitung</h2>
       <ol style={styles.list}>
-        <li>Wähle eine Eingabemethode (Text, Datei oder Kamera).</li>
-        <li>Gib die Komponentendaten ein oder mache ein Foto.</li>
+        <li>Wähle eine Kameramethode (Integriert oder IP-Kamera).</li>
+        <li>Aktiviere die Kamera und mache ein Foto der Komponente.</li>
         <li>Klicke auf "Analysieren", um Details von der KI zu erhalten.</li>
         <li>Speichere deine Sitzung oder exportiere sie als PDF.</li>
       </ol>
