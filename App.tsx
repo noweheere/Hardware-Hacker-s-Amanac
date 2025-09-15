@@ -4,6 +4,7 @@ import InputArea from './components/InputArea';
 import ResultsDisplay from './components/ResultsDisplay';
 import NotesSection from './components/NotesSection';
 import ProjectActions from './components/ProjectActions';
+import ProjectFeedback from './components/ProjectFeedback';
 import Instructions from './components/Instructions';
 import { AnalysisResult, AppState } from './types';
 import { analyzeComponent } from './services/geminiService';
@@ -43,6 +44,11 @@ const App = () => {
     }
   };
 
+  const handleFeedbackSubmitted = (feedback: any) => {
+    console.log('Feedback received:', feedback);
+    // Here you could send feedback to a server or analytics service
+  };
+
   const handleNotesChange = (notes: string) => {
     setAppState(prev => ({ ...prev, notes }));
   };
@@ -61,6 +67,7 @@ const App = () => {
         </div>
         <div style={styles.rightPanel}>
           <ProjectActions />
+          <ProjectFeedback onFeedbackSubmitted={handleFeedbackSubmitted} />
           <NotesSection notes={appState.notes} onNotesChange={handleNotesChange} />
           <Instructions />
         </div>
